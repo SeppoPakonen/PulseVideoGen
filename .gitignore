@@ -8,3 +8,5 @@ Makefile
 Thumbs.db
 output*
 test_*
+release/
+*.zip

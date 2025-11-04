@@ -1,0 +1,6 @@
+#ifndef VERSION_H
+#define VERSION_H
+
+#define PULSE_VERSION_STR "@VERSION@"
+
+#endif // VERSION_H

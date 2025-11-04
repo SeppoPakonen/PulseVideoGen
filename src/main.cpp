@@ -21,6 +21,10 @@
 #  define PCLOSE pclose
 #endif
 
+#include "version.h"
+
+static const char* const VERSION = PULSE_VERSION_STR;
+
 struct Args {
 	std::string outPath;
 	double bpm = -1.0;           // required
@@ -71,6 +75,8 @@ static bool parseArgs(int argc, char** argv, Args& a) {
 	if (const char* v = get("--beat-skip")) a.beat_skip = std::stoi(v);
 
 	if (a.outPath.empty() || a.bpm <= 0.0) {
+		std::cerr << "Pulse Video Generator " << VERSION << "\n";
+		std::cerr << "Copyright Seppo Pakonen (C) 2025\n";
 		std::cerr << "Usage: --bpm <float> --out <output.mp4> "
 		"[--duration S] [--fps N] [--width W] [--height H] "
 		"[--threads T] [--noise-scale S] [--octaves O] "

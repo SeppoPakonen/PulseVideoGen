@@ -1,4 +1,4 @@
-# pulse_perlin_overlay_v2
+# PulseVideoGen
 
 Self-contained C++17 generator that renders a *white, BPM-synced* 3D Perlin noise pulse video.
 No input video. No audio. Frames are piped to **ffmpeg** (CLI) and encoded with libx264.

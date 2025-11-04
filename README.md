@@ -21,7 +21,7 @@ bin/pulse_gen --bpm <float> --out output.mp4
 [--duration 180] [--fps 30] [--width 1080] [--height 1920]
 [--threads auto] [--noise-scale 1.0] [--octaves 6]
 [--persistence 0.5] [--lacunarity 2.0] [--seed 1462735277]
-[--strength 1.0]
+[--strength 1.0] [--beat-skip 4]
 ```
 
 - **--bpm** *(float, required)*: musical tempo.
@@ -33,10 +33,12 @@ bin/pulse_gen --bpm <float> --out output.mp4
 - **--octaves/persistence/lacunarity** fractal noise controls.
 - **--seed** 32-bit seed (default `0x578437ad`).
 - **--strength** global multiplier 0..1 on the envelope*noise.
+- **--beat-skip** number of beats to skip between pulses *(default 4)*.
 
 ## What it does
 For each frame at time `t = frame_index / fps`:
-- envelope: `E(t) = 1 - |sin(2π * (bpm/60) * t)|`
+- effective BPM: `effective_bpm = bpm / beat_skip`
+- envelope: `E(t) = 1 - |sin(2π * (effective_bpm/60) * t)|`
 - noise: fractal 3D Perlin `N(x,y,t*0.25)` normalized to `[0,1]`
 - pixel intensity (grayscale white): `I = 255 * E(t) * N * strength`
 
@@ -54,6 +56,13 @@ You can tweak `-preset`, `-crf`, etc. via env `FFMPEG_EXTRA_ARGS`.
 ```
 bin/pulse_gen --bpm 123.5 --duration 90 --out pulse.mp4 --strength 0.7
 ```
+
+## Example with beat-skip
+
+```
+bin/pulse_gen --bpm 120 --duration 60 --out pulse.mp4 --beat-skip 8
+```
+This example creates a video where the pulse happens once every 8 beats instead of every beat.
 
 
 ## Notes

@@ -35,6 +35,7 @@ struct Args {
 	double lacunarity = 2.0;
 	uint32_t seed = 0x578437adU;
 	double strength = 1.0;
+	int beat_skip = 4;           // beats to skip (default 4)
 };
 
 static bool parseArgs(int argc, char** argv, Args& a) {
@@ -67,12 +68,13 @@ static bool parseArgs(int argc, char** argv, Args& a) {
 	if (const char* v = get("--lacunarity")) a.lacunarity = std::stod(v);
 	if (const char* v = get("--seed")) a.seed = static_cast<uint32_t>(std::stoul(v));
 	if (const char* v = get("--strength")) a.strength = std::stod(v);
+	if (const char* v = get("--beat-skip")) a.beat_skip = std::stoi(v);
 
 	if (a.outPath.empty() || a.bpm <= 0.0) {
 		std::cerr << "Usage: --bpm <float> --out <output.mp4> "
 		"[--duration S] [--fps N] [--width W] [--height H] "
 		"[--threads T] [--noise-scale S] [--octaves O] "
-		"[--persistence P] [--lacunarity L] [--seed N] [--strength K]\n";
+		"[--persistence P] [--lacunarity L] [--seed N] [--strength K] [--beat-skip N]\n";
 		return false;
 	}
 	if (a.threads <= 0) {
@@ -190,6 +192,7 @@ struct RenderCtx {
 	int W, H;
 	double aspect;
 	double bpm;
+	int beat_skip;
 	double noiseScale;
 	int octaves;
 	double persistence;
@@ -201,7 +204,8 @@ struct RenderCtx {
 
 static void render_rows(uint8_t* rgb, int W, int H, int y0, int y1,
 						const RenderCtx& ctx, double t) {
-	const double omega = 2.0 * M_PI * (ctx.bpm / 60.0);
+	const double effective_bpm = ctx.bpm / static_cast<double>(ctx.beat_skip);
+	const double omega = 2.0 * M_PI * (effective_bpm / 60.0);
 	const double envelope = 1.0 - std::abs(std::sin(omega * t));
 	const double z = t * ctx.z_speed;
 
@@ -253,7 +257,7 @@ W, H, FPS, extra.c_str(), args.outPath.c_str());
 	}
 
 	std::vector<uint8_t> frame((size_t)W * H * 3);
-	RenderCtx ctx { W, H, double(W)/double(H), args.bpm, args.noiseScale,
+	RenderCtx ctx { W, H, double(W)/double(H), args.bpm, args.beat_skip, args.noiseScale,
 		args.octaves, args.persistence, args.lacunarity,
 		args.seed, args.strength, 0.25 };
 

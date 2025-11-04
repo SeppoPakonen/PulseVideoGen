@@ -1,4 +1,4 @@
-!/bin/sh
+#!/usr/bin/env bash
 set -eu
 mkdir -p build bin
 cd build

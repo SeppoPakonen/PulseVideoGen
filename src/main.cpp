@@ -10,6 +10,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <chrono>
+#include <mutex>
 
 #ifdef _WIN32
 #  ifndef WIN32_LEAN_AND_MEAN
@@ -303,8 +304,11 @@ W, H, FPS, extra.c_str(), args.outPath.c_str());
 		}
 		for (auto& th : workers) th.join();
 
-		// Additional synchronization to ensure all memory writes are complete
+		// More comprehensive memory synchronization for Windows
 		std::atomic_thread_fence(std::memory_order_seq_cst);
+
+		// Ensure all CPU cores have synchronized their caches
+		std::this_thread::sleep_for(std::chrono::microseconds(1));  // Tiny delay to ensure completion
 
 		// Write to ffmpeg stdin with potential buffer flushing
 		size_t wrote = fwrite(frame.data(), 1, frame.size(), ff);

@@ -284,12 +284,23 @@ W, H, FPS, extra.c_str(), args.outPath.c_str());
 		args.seed, args.strength, 0.25 };
 
 	const int T = args.threads;
-	std::vector<std::thread> workers(T);
+	std::vector<std::thread> workers;  // Start with empty vector
 
 	auto t0 = std::chrono::high_resolution_clock::now();
 
 	for (int f = 0; f < frames; ++f) {
 		double t = double(f) / double(FPS);
+
+		// Ensure proper cleanup: join any existing threads and clear the vector
+		for (auto& th : workers) {
+			if (th.joinable()) {
+				th.join();
+			}
+		}
+		workers.clear();
+
+		// Resize and populate with new threads for this frame
+		workers.resize(T);
 
 		// Partition rows - ensure proper synchronization
 		int rowsPer = H / T;

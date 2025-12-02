@@ -12,7 +12,16 @@
 #include <chrono>
 
 #ifdef _WIN32
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
 #  include <windows.h>
+#  ifndef M_PI
+#    define M_PI 3.14159265358979323846
+#  endif
 #  define POPEN _popen
 #  define PCLOSE _pclose
 #else
@@ -54,7 +63,9 @@ static bool parseArgs(int argc, char** argv, Args& a) {
 			}
 		}
 	}
-	auto get = [&](const char* key)->const char*{
+
+	// Define get function separately to avoid lambda parsing issues on Windows
+	auto get = [&kv](const char* key) -> const char* {
 		auto it = kv.find(key);
 		return it == kv.end() ? nullptr : it->second.c_str();
 	};
@@ -212,7 +223,8 @@ static void render_rows(uint8_t* rgb, int W, int H, int y0, int y1,
 						const RenderCtx& ctx, double t) {
 	const double effective_bpm = ctx.bpm / static_cast<double>(ctx.beat_skip);
 	const double omega = 2.0 * M_PI * (effective_bpm / 60.0);
-	const double envelope = 1.0 - std::abs(std::sin(omega * t));
+	const double phase = omega * t;
+	const double envelope = 1.0 - std::abs(std::sin(phase));
 	const double z = t * ctx.z_speed;
 
 	for (int y = y0; y < y1; ++y) {
@@ -224,8 +236,11 @@ static void render_rows(uint8_t* rgb, int W, int H, int y0, int y1,
 
 			double n = perlinFractal(px, py, z, 1, ctx.octaves, ctx.persistence, ctx.lacunarity, ctx.seed);
 			double n01 = (n + 1.0) * 0.5;
+			// Apply envelope modulation to the noise value before clamping
 			double a = envelope * n01 * ctx.strength;
-			if (a < 0.0) a = 0.0; if (a > 1.0) a = 1.0;
+			// Ensure value is in [0,1] range
+			if (a < 0.0) a = 0.0;
+			if (a > 1.0) a = 1.0;
 			uint8_t val = (uint8_t)std::lround(a * 255.0);
 
 			size_t idx = (size_t(y) * W + x) * 3;
@@ -275,7 +290,7 @@ W, H, FPS, extra.c_str(), args.outPath.c_str());
 	for (int f = 0; f < frames; ++f) {
 		double t = double(f) / double(FPS);
 
-		// Partition rows
+		// Partition rows - ensure proper synchronization
 		int rowsPer = H / T;
 		int rem = H % T;
 		int y = 0;
@@ -288,12 +303,16 @@ W, H, FPS, extra.c_str(), args.outPath.c_str());
 		}
 		for (auto& th : workers) th.join();
 
-		// Write to ffmpeg stdin
+		// Additional synchronization to ensure all memory writes are complete
+		std::atomic_thread_fence(std::memory_order_seq_cst);
+
+		// Write to ffmpeg stdin with potential buffer flushing
 		size_t wrote = fwrite(frame.data(), 1, frame.size(), ff);
 		if (wrote != frame.size()) {
 			std::cerr << "ffmpeg write failed at frame " << f << "\n";
 			break;
 		}
+		fflush(ff);  // Ensure data is flushed to ffmpeg
 	}
 
 	int rc = PCLOSE(ff);
